@@ -2,18 +2,17 @@
 import json
 import openai
 from tqdm import tqdm
-from groq import Groq
 import time
 import argparse
 import logging
 
 api_key = ""
-#openai_client = openai.OpenAI(api_key=api_key, base_url=base_url)
 
 logging.basicConfig(level=logging.INFO, filename='translation.log', filemode='a',
                     format='%(asctime)s - %(levelname)s - %(message)s')
 try:
     openai_client = openai.OpenAI(api_key=api_key)
+    #openai_client = openai.OpenAI(api_key=api_key, base_url=base_url)
     print ("client initalised")
 except Exception as e:
     print(f"An error occurred during API initialisation: {e}")
@@ -181,18 +180,12 @@ def process_file(input_file_path, output_file_path, raw_file_path, line_indices)
     except Exception as e:
         logging.error(f"An error occurred: {e}")
 
-
-
-
 def generate_failed_items_str(indices):
     """
     Converts a list of failed item indices into a string.
     """
     if not indices:
         return ""
-
-
-
 
     # Sort the list of indices and initialize the first range
     indices.sort()
