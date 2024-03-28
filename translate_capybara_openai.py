@@ -66,7 +66,7 @@ def translate_text_openai(text):
 
 def translate_item(item, raw_file_path):
     """
-    Translates the relevant fields in the given item from English to German using Mixtral's translation service,
+    Translates the relevant fields in the given item from English to German using the API for translation service,
     and saves the raw response to a backup file.
     """
     try:
