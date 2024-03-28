@@ -64,16 +64,20 @@ def translate_text_openai(text):
         return None
 
 def translate_item(item, raw_file_path):
-    """
-    Translates the relevant fields in the given item from English to German using the API for translation service,
-    and saves the raw response to a backup file.
-    """
     try:
         # Extract the relevant fields for translation
         conversation = item['conversation']
+        translated_conversation = []  # Store translated turns in a separate list
         for turn in conversation:
-            turn['input'] = translate_text_openai(turn['input'])
-            turn['output'] = translate_text_openai(turn['output'])
+            translated_input = translate_text_openai(turn['input'])
+            translated_output = translate_text_openai(turn['output'])
+            translated_conversation.append({
+                'input': translated_input,
+                'output': translated_output
+            })
+        
+        # Update the 'conversation' field with the translated turns
+        item['conversation'] = translated_conversation
         
         # Write the raw response to a backup file
         with open(raw_file_path, 'a', encoding='utf-8') as raw_file:
