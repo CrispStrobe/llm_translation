@@ -67,19 +67,27 @@ def translate_item(item, raw_file_path):
     try:
         # Extract the relevant fields for translation
         conversation = item['conversation']
-        translated_conversation = []  # Store translated turns in a separate list
-        for turn in conversation:
+        translated_conversation = {}  # Store translated turns in a dictionary with index as key
+        for index, turn in enumerate(conversation):
+            #print ("\nturn index:", index)
+            #print ("\ninput:", turn['input'])
             translated_input = translate_text_openai(turn['input'])
+            #print ("\ntranslated input:", translated_input)
+            #print ("\noutput:", turn['output'])
             translated_output = translate_text_openai(turn['output'])
-            translated_conversation.append({
+            #print ("\ntranslated output:", translated_output)
+            
+            translated_conversation[index] = {
                 'input': translated_input,
                 'output': translated_output
-            })
+            }
         
-        # Update the 'conversation' field with the translated turns
-        item['conversation'] = translated_conversation
+        # Update the 'conversation' field with the translated turns while preserving the order
+        item['conversation'] = [translated_conversation[index] for index in sorted(translated_conversation.keys())]
         
-        # Write the raw response to a backup file
+        #print("\nitem:", item['conversation'])
+
+        # Write the translated item to a backup file
         with open(raw_file_path, 'a', encoding='utf-8') as raw_file:
             raw_file.write(json.dumps(item, ensure_ascii=False) + "\n")
         
