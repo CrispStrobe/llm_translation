@@ -1,4 +1,5 @@
 import json
+import os
 from tabulate import tabulate
 from huggingface_hub import hf_hub_download
 
@@ -8,10 +9,17 @@ dataset_files = [
     "Capybara_de_GPT4_scored.jsonl",
     "Capybara_de_Claude-3-Opus_scored.jsonl",
     "Capybara_de_GPT3.5_scored.jsonl",
+    "Capybara_de_GPT4_scored.jsonl",
     "Capybara_de_deepl_scored.jsonl",
     "Capybara_de_mixtral_scored.jsonl",
     "Capybara_de_occiglot_scored.jsonl",
-    "Capybara_de_wmt19_scored.jsonl"
+    "Capybara_de_wmt19_scored.jsonl",
+    "Capybara_de_discolm_scored.jsonl",
+    "Capybara_de_TowerInstruct2_scored.jsonl",
+    "Capybara_de_t5madlad_scored.jsonl",
+    "Capybara_de_wmt21_scored.jsonl",
+    "Capybara_de_wmt21_scored.jsonl",
+    "Capybara_de_nbbl_scored.jsonl",
 ]
 
 # Download the scored JSONL files from Hugging Face
@@ -62,13 +70,16 @@ for file_name in dataset_files:
     # Store the overall score for the file
     overall_scores[file_name] = overall_score
 
+# Create a list of tuples containing the file name and overall score
+score_list = list(overall_scores.items())
+
+# Sort the score list in decreasing order of overall scores
+score_list.sort(key=lambda x: x[1], reverse=True)
+
 # Create a table to display the overall scores
 table_data = []
-for file_name, score in overall_scores.items():
+for file_name, score in score_list:
     table_data.append([file_name, score])
-
-# Sort the table data based on the overall score in descending order
-table_data.sort(key=lambda x: x[1], reverse=True)
 
 # Print the table using the tabulate library
 headers = ["File", "Overall Score"]
