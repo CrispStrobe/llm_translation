@@ -1,0 +1,6 @@
+pandas
+requests
+ctranslate2
+transformers
+tqdm
+huggingface_hub
