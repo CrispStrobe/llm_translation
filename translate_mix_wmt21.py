@@ -6,7 +6,7 @@ import argparse
 import logging
 import transformers
 
-translator = ctranslate2.Translator("wmt21ct2_int8") #from cstr/wmt21-dense-24-wide-en-x-stq8
+translator = ctranslate2.Translator("wmt21ct2_int8") #create this first per: ct2-transformers-converter --model cstr/wmt21-dense-24-wide-en-x-st --quantization int8_float32 --output_dir wmt21ct2_int8
 tokenizer = transformers.AutoTokenizer.from_pretrained("facebook/wmt21-dense-24-wide-en-x")
 tokenizer.src_lang = "en"   
 
