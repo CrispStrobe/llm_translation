@@ -94,40 +94,6 @@ def translate_text(text, translator, tokenizer):
         logging.error(f"An error occurred during translation: {e}")
         return None
 
-def translate_item_singleturn(item, raw_file_path, translator):
-    """
-    Translates the relevant fields in the given item from English to German using CTranslate2 and the WMT21 model,
-    and saves the raw response to a backup file.
-    """
-    try:
-        # Extract the relevant fields for translation
-        prompt_content = item['prompt'][0]['content']
-        chosen_content = item['chosen'][0]['content']
-        rejected_content = item['rejected'][0]['content']
-
-        # Translate the fields
-        translated_prompt_content = translate_text(prompt_content, translator, tokenizer)
-        translated_chosen_content = translate_text(chosen_content, translator, tokenizer)
-        translated_rejected_content = translate_text(rejected_content, translator, tokenizer)
-        
-        # Write the raw response to a backup file
-        with open(raw_file_path, 'a', encoding='utf-8') as raw_file:
-            raw_file.write(f"Prompt content: {translated_prompt_content}\n")
-            raw_file.write(f"Chosen content: {translated_chosen_content}\n")
-            raw_file.write(f"Rejected content: {translated_rejected_content}\n\n")
-        
-        logging.info("Translation request successful.")
-    except Exception as e:
-        logging.error(f"An error occurred during translation: {e}")
-        return None
-    
-    # Update the original item with the translated fields
-    item['prompt'][0]['content'] = translated_prompt_content
-    item['chosen'][0]['content'] = translated_chosen_content
-    item['rejected'][0]['content'] = translated_rejected_content
-    
-    logging.info("Translation processing successful.")
-    return item
 
 def translate_item(item, raw_file_path, translator):
     """
