@@ -551,6 +551,7 @@ def main():
             {
                 "url": "https://huggingface.co/datasets/argilla/ultrafeedback-binarized-preferences-cleaned/resolve/main/data/train-00000-of-00001.parquet?download=true",
                 "local_path": "train.parquet",
+                "input_file": "ufb_en.jsonl",
                 "output_file": "ufb_de.jsonl",
                 "raw_file": "ufb_de_raw.jsonl",
                 "range_spec": "1-",
