@@ -512,11 +512,12 @@ def translate_dataset(train_url, local_parquet_path, input_file_path, output_fil
     except Exception as e:
         logging.error(f"Failed to upload {output_file_path} to Hugging Face: {e}")  
 
+# Setup logging configuration
+logging.basicConfig(level=logging.INFO, filename='translation.log', filemode='a',
+                            format='%(asctime)s - %(levelname)s - %(message)s')
+
 def main():
     try:
-        # Setup logging configuration
-        logging.basicConfig(level=logging.INFO, filename='translation.log', filemode='a',
-                            format='%(asctime)s - %(levelname)s - %(message)s')
         
         # Configuration and paths
         tokenizer_name = "facebook/wmt21-dense-24-wide-en-x"
