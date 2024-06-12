@@ -195,37 +195,43 @@ def validate_item_ufb(item):
 	return True
 
 def translate_item_mix(item, raw_file_path, translator, tokenizer, target_language="de"):
-	try:
-		# Translate each part of the prompt separately and preserve the order
-		translated_prompts = []
-		for message in item['prompt']:
-			translated_content = translate_text(message['content'], translator, tokenizer, target_language)
-			translated_prompts.append({'content': translated_content, 'role': message['role']})
+    try:
+        # Übersetze jeden Teil des Prompts separat und behalte die Reihenfolge bei
+        original_prompts = item['prompt']
+        translated_prompts = []
+        for message in original_prompts:
+            translated_content = translate_text(message['content'], translator, tokenizer, target_language)
+            translated_prompts.append({'content': translated_content, 'role': message['role']})
 
-		# Translate the chosen and rejected contents
-		translated_chosen_content = translate_text(item['chosen'][0]['content'], translator, tokenizer, target_language)
-		translated_rejected_content = translate_text(item['rejected'][0]['content'], translator, tokenizer, target_language)
+        # Übersetze die gewählten und abgelehnten Inhalte
+        original_chosen = item['chosen']
+        translated_chosen_content = translate_text(original_chosen[0]['content'], translator, tokenizer, target_language)
+        translated_chosen = [{'content': translated_chosen_content, 'role': original_chosen[0]['role']}]
 
-		# Write the raw response to a backup file
-		with open(raw_file_path, 'a', encoding='utf-8') as raw_file:
-			raw_file.write("Prompt content:\n")
-			for translated_prompt in translated_prompts:
-				raw_file.write(f"{translated_prompt['role']}: {translated_prompt['content']}\n")
-			raw_file.write(f"Chosen content: {translated_chosen_content}\n")
-			raw_file.write(f"Rejected content: {translated_rejected_content}\n\n")
+        original_rejected = item['rejected']
+        translated_rejected_content = translate_text(original_rejected[0]['content'], translator, tokenizer, target_language)
+        translated_rejected = [{'content': translated_rejected_content, 'role': original_rejected[0]['role']}]
 
-		print("Translation request successful.")
-	except Exception as e:
-		print(f"An error occurred during translation: {e}")
-		return None
+        # Schreibe die rohe Antwort in eine Sicherungsdatei
+        with open(raw_file_path, 'a', encoding='utf-8') as raw_file:
+            raw_file.write("Prompt content:\n")
+            for translated_prompt in translated_prompts:
+                raw_file.write(f"{translated_prompt['role']}: {translated_prompt['content']}\n")
+            raw_file.write(f"Chosen content: {translated_chosen_content}\n")
+            raw_file.write(f"Rejected content: {translated_rejected_content}\n\n")
 
-	# Update the original item with the translated fields
-	item['prompt'] = translated_prompts
-	item['chosen'][0]['content'] = translated_chosen_content
-	item['rejected'][0]['content'] = translated_rejected_content
+        print("Translation request successful.")
+    except Exception as e:
+        print(f"An error occurred during translation: {e}")
+        return None
 
-	print("Translation processing successful.")
-	return item
+    # Aktualisiere das Originalelement mit den übersetzten Feldern, aber behalte das Original bei
+    item['prompt_translated'] = translated_prompts
+    item['chosen_translated'] = translated_chosen
+    item['rejected_translated'] = translated_rejected
+
+    print("Translation processing successful.")
+    return item
 
 def validate_item_mix(item):
 	required_fields = ['dataset', 'prompt', 'chosen', 'rejected']
