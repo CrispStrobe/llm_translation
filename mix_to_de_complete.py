@@ -133,37 +133,38 @@ def translate_text(text, translator, tokenizer, target_language="de"):
 		return None
 
 def translate_item_ufb(item, raw_file_path, translator, tokenizer, target_language="de"):
-	try:
-		# Translate the prompt directly since it's a string
-		translated_prompt = translate_text(item['prompt'], translator, tokenizer, target_language)
+    try:
+        # Übersetze den Prompt und speichere das Original
+        original_prompt = item['prompt']
+        translated_prompt = translate_text(item['prompt'], translator, tokenizer, target_language)
 
-		# Translate the chosen and rejected contents
-		translated_chosen = []
-		for choice in item['chosen']:
-			translated_content = translate_text(choice['content'], translator, tokenizer, target_language)
-			translated_chosen.append({'content': translated_content, 'role': choice['role']})
+        # Übersetze die gewählten und abgelehnten Inhalte
+        translated_chosen = []
+        for choice in item['chosen']:
+            translated_content = translate_text(choice['content'], translator, tokenizer, target_language)
+            translated_chosen.append({'content': translated_content, 'role': choice['role']})
 
-		translated_rejected = []
-		for choice in item['rejected']:
-			translated_content = translate_text(choice['content'], translator, tokenizer, target_language)
-			translated_rejected.append({'content': translated_content, 'role': choice['role']})
+        translated_rejected = []
+        for choice in item['rejected']:
+            translated_content = translate_text(choice['content'], translator, tokenizer, target_language)
+            translated_rejected.append({'content': translated_content, 'role': choice['role']})
 
-		# Write the raw response to a backup file
-		with open(raw_file_path, 'a', encoding='utf-8') as raw_file:
-			raw_file.write(f"Prompt: {translated_prompt}\n")
-			raw_file.write(f"Chosen: {json.dumps(translated_chosen, ensure_ascii=False)}\n")
-			raw_file.write(f"Rejected: {json.dumps(translated_rejected, ensure_ascii=False)}\n\n")
+        # Schreibe die rohe Antwort in eine Sicherungsdatei
+        with open(raw_file_path, 'a', encoding='utf-8') as raw_file:
+            raw_file.write(f"Prompt: {translated_prompt}\n")
+            raw_file.write(f"Chosen: {json.dumps(translated_chosen, ensure_ascii=False)}\n")
+            raw_file.write(f"Rejected: {json.dumps(translated_rejected, ensure_ascii=False)}\n\n")
 
-		print("Translation request successful.")
-		# Update the original item with the translated fields
-		item['prompt'] = translated_prompt
-		item['chosen'] = translated_chosen
-		item['rejected'] = translated_rejected
-		return item
+        print("Translation request successful.")
+        # Aktualisiere das Originalelement mit den übersetzten Feldern, aber behalte das Original bei
+        item['prompt_translated'] = translated_prompt
+        item['chosen'] = translated_chosen
+        item['rejected'] = translated_rejected
+        return item
 
-	except Exception as e:
-		print(f"An error occurred during translation: {e}")
-		return None
+    except Exception as e:
+        print(f"An error occurred during translation: {e}")
+        return None
 
 def validate_item_ufb(item):
 	# Check basic required fields including 'prompt' as a simple string
@@ -249,49 +250,50 @@ def validate_item_mix(item):
 
 
 def translate_item_ufb_cached(item, raw_file_path, translator, tokenizer, target_language="de"):
-	try:
-		translated_texts = {}  # Cache to store translated texts
+    try:
+        translated_texts = {}  # Cache zum Speichern übersetzter Texte
 
-		# Translate the prompt if necessary (which is a user input and can appear again)
-		if item['prompt'] not in translated_texts:
-			translated_prompt = translate_text(item['prompt'], translator, tokenizer, target_language)
-			translated_texts[item['prompt']] = translated_prompt
-		else:
-			translated_prompt = translated_texts[item['prompt']]
+        # Übersetze den Prompt, falls nötig (da es eine Benutzereingabe ist und erneut erscheinen kann)
+        original_prompt = item['prompt']
+        if original_prompt not in translated_texts:
+            translated_prompt = translate_text(original_prompt, translator, tokenizer, target_language)
+            translated_texts[original_prompt] = translated_prompt
+        else:
+            translated_prompt = translated_texts[original_prompt]
 
-		# Helper function to handle content translation with caching
-		def get_translated_content(content):
-			if content not in translated_texts:
-				translated_texts[content] = translate_text(content, translator, tokenizer, target_language)
-			return translated_texts[content]
+        # Hilfsfunktion zum Umgang mit der Inhaltsübersetzung mit Caching
+        def get_translated_content(content):
+            if content not in translated_texts:
+                translated_texts[content] = translate_text(content, translator, tokenizer, target_language)
+            return translated_texts[content]
 
-		# Process translations for chosen and rejected sections
-		def translate_interactions(interactions):
-			translated_interactions = []
-			for interaction in interactions:
-				translated_content = get_translated_content(interaction['content'])
-				translated_interactions.append({'content': translated_content, 'role': interaction['role']})
-			return translated_interactions
+        # Übersetzungen für gewählte und abgelehnte Abschnitte verarbeiten
+        def translate_interactions(interactions):
+            translated_interactions = []
+            for interaction in interactions:
+                translated_content = get_translated_content(interaction['content'])
+                translated_interactions.append({'content': translated_content, 'role': interaction['role']})
+            return translated_interactions
 
-		translated_chosen = translate_interactions(item['chosen'])
-		translated_rejected = translate_interactions(item['rejected'])
+        translated_chosen = translate_interactions(item['chosen'])
+        translated_rejected = translate_interactions(item['rejected'])
 
-		# Write the raw response to a backup file
-		with open(raw_file_path, 'a', encoding='utf-8') as raw_file:
-			raw_file.write(f"Prompt: {translated_prompt}\n")
-			raw_file.write(f"Chosen: {json.dumps(translated_chosen, ensure_ascii=False)}\n")
-			raw_file.write(f"Rejected: {json.dumps(translated_rejected, ensure_ascii=False)}\n\n")
+        # Schreibe die rohe Antwort in eine Sicherungsdatei
+        with open(raw_file_path, 'a', encoding='utf-8') as raw_file:
+            raw_file.write(f"Prompt: {translated_prompt}\n")
+            raw_file.write(f"Chosen: {json.dumps(translated_chosen, ensure_ascii=False)}\n")
+            raw_file.write(f"Rejected: {json.dumps(translated_rejected, ensure_ascii=False)}\n\n")
 
-		print("Translation request successful.")
-		# Update the original item with the translated fields
-		item['prompt'] = translated_prompt
-		item['chosen'] = translated_chosen
-		item['rejected'] = translated_rejected
-		return item
+        print("Translation request successful.")
+        # Aktualisiere das Originalelement mit den übersetzten Feldern, aber behalte das Original bei
+        item['prompt_translated'] = translated_prompt
+        item['chosen'] = translated_chosen
+        item['rejected'] = translated_rejected
+        return item
 
-	except Exception as e:
-		print(f"An error occurred during translation: {e}")
-		return None
+    except Exception as e:
+        print(f"An error occurred during translation: {e}")
+        return None
 
 def validate_item_ufb_cached(item):
 	# Check basic required fields
