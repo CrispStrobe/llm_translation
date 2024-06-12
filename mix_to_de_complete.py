@@ -136,16 +136,18 @@ def translate_item_ufb(item, raw_file_path, translator, tokenizer, target_langua
     try:
         # Übersetze den Prompt und speichere das Original
         original_prompt = item['prompt']
-        translated_prompt = translate_text(item['prompt'], translator, tokenizer, target_language)
+        translated_prompt = translate_text(original_prompt, translator, tokenizer, target_language)
 
         # Übersetze die gewählten und abgelehnten Inhalte
+        original_chosen = item['chosen']
         translated_chosen = []
-        for choice in item['chosen']:
+        for choice in original_chosen:
             translated_content = translate_text(choice['content'], translator, tokenizer, target_language)
             translated_chosen.append({'content': translated_content, 'role': choice['role']})
 
+        original_rejected = item['rejected']
         translated_rejected = []
-        for choice in item['rejected']:
+        for choice in original_rejected:
             translated_content = translate_text(choice['content'], translator, tokenizer, target_language)
             translated_rejected.append({'content': translated_content, 'role': choice['role']})
 
@@ -158,14 +160,14 @@ def translate_item_ufb(item, raw_file_path, translator, tokenizer, target_langua
         print("Translation request successful.")
         # Aktualisiere das Originalelement mit den übersetzten Feldern, aber behalte das Original bei
         item['prompt_translated'] = translated_prompt
-        item['chosen'] = translated_chosen
-        item['rejected'] = translated_rejected
+        item['chosen_translated'] = translated_chosen
+        item['rejected_translated'] = translated_rejected
         return item
 
     except Exception as e:
         print(f"An error occurred during translation: {e}")
         return None
-
+	    
 def validate_item_ufb(item):
 	# Check basic required fields including 'prompt' as a simple string
 	required_fields = ['source', 'prompt', 'chosen', 'rejected']
@@ -268,15 +270,17 @@ def translate_item_ufb_cached(item, raw_file_path, translator, tokenizer, target
             return translated_texts[content]
 
         # Übersetzungen für gewählte und abgelehnte Abschnitte verarbeiten
-        def translate_interactions(interactions):
-            translated_interactions = []
-            for interaction in interactions:
-                translated_content = get_translated_content(interaction['content'])
-                translated_interactions.append({'content': translated_content, 'role': interaction['role']})
-            return translated_interactions
+        original_chosen = item['chosen']
+        translated_chosen = []
+        for interaction in original_chosen:
+            translated_content = get_translated_content(interaction['content'])
+            translated_chosen.append({'content': translated_content, 'role': interaction['role']})
 
-        translated_chosen = translate_interactions(item['chosen'])
-        translated_rejected = translate_interactions(item['rejected'])
+        original_rejected = item['rejected']
+        translated_rejected = []
+        for interaction in original_rejected:
+            translated_content = get_translated_content(interaction['content'])
+            translated_rejected.append({'content': translated_content, 'role': interaction['role']})
 
         # Schreibe die rohe Antwort in eine Sicherungsdatei
         with open(raw_file_path, 'a', encoding='utf-8') as raw_file:
@@ -287,13 +291,14 @@ def translate_item_ufb_cached(item, raw_file_path, translator, tokenizer, target
         print("Translation request successful.")
         # Aktualisiere das Originalelement mit den übersetzten Feldern, aber behalte das Original bei
         item['prompt_translated'] = translated_prompt
-        item['chosen'] = translated_chosen
-        item['rejected'] = translated_rejected
+        item['chosen_translated'] = translated_chosen
+        item['rejected_translated'] = translated_rejected
         return item
 
     except Exception as e:
         print(f"An error occurred during translation: {e}")
         return None
+	    
 
 def validate_item_ufb_cached(item):
 	# Check basic required fields
