@@ -194,6 +194,57 @@ def validate_item_ufb(item):
 
 	return True
 
+def translate_item_sciriff(item, raw_file_path, translator, tokenizer, target_language="de"):
+    try:
+        # Übersetze jeden Teil der Nachrichten separat und behalte die Reihenfolge bei
+        original_messages = item['messages']
+        translated_messages = []
+        for message in original_messages:
+            translated_content = translate_text(message['content'], translator, tokenizer, target_language)
+            translated_messages.append({'content': translated_content, 'role': message['role']})
+
+        # Schreibe die rohe Antwort in eine Sicherungsdatei
+        with open(raw_file_path, 'a', encoding='utf-8') as raw_file:
+            raw_file.write("Messages content:\n")
+            for translated_message in translated_messages:
+                raw_file.write(f"{translated_message['role']}: {translated_message['content']}\n")
+            raw_file.write("\n")
+
+        print("Translation request successful.")
+    except Exception as e:
+        print(f"An error occurred during translation: {e}")
+        return None
+
+    # Aktualisiere das Originalelement mit den übersetzten Feldern, aber behalte das Original bei
+    item['messages_translated'] = translated_messages
+
+    print("Translation processing successful.")
+    return item
+
+def validate_item_sciriff(item):
+    required_fields = ['dataset', 'id', 'messages']
+    for field in required_fields:
+        if field not in item:
+            print(f"Missing required field: {field}")
+            return False
+
+    # Prüfe, ob mindestens eine Nachricht vorhanden ist
+    if not item['messages']:
+        print("No messages found in the item.")
+        return False
+
+    # Validiere 'content' und 'role' Felder in allen Nachrichten
+    for message in item['messages']:
+        if 'content' not in message or 'role' not in message:
+            print("Missing 'content' or 'role' field in message.")
+            return False
+        if not isinstance(message['content'], str) or not isinstance(message['role'], str):
+            print("Invalid type for 'content' or 'role' field in message.")
+            return False
+
+    return True
+
+
 def translate_item_mix(item, raw_file_path, translator, tokenizer, target_language="de"):
     try:
         # Übersetze jeden Teil des Prompts separat und behalte die Reihenfolge bei
@@ -335,76 +386,81 @@ def validate_item_ufb_cached(item):
 	return True
 
 def process_file(input_file_path, output_file_path, raw_file_path, line_indices, translator, tokenizer, model_type, target_language="de"):
-	try:
-		# Assigning validation and translation functions based on model_type
-		if model_type == "mix":
-			print("translating a mix-style model...")
-			validate_item = validate_item_mix
-			translate_item = translate_item_mix
-		elif model_type == "ufb_cached":
-			print("translating an ufb_cached-style model...")
-			validate_item = validate_item_ufb_cached
-			translate_item = translate_item_ufb_cached
-		elif model_type == "ufb":
-			print("translating an ultrafeedback-style model...")
-			validate_item = validate_item_ufb
-			translate_item = translate_item_ufb
-		else:
-			raise ValueError(f"Unsupported model_type: {model_type}")
+    try:
+        # Zuordnen von Validierungs- und Übersetzungsfunktionen basierend auf model_type
+        if model_type == "mix":
+            print("translating a mix-style model...")
+            validate_item = validate_item_mix
+            translate_item = translate_item_mix
+        elif model_type == "ufb_cached":
+            print("translating an ufb_cached-style model...")
+            validate_item = validate_item_ufb_cached
+            translate_item = translate_item_ufb_cached
+        elif model_type == "ufb":
+            print("translating an ultrafeedback-style model...")
+            validate_item = validate_item_ufb
+            translate_item = translate_item_ufb
+        elif model_type == "sciriff":
+            print("translating a SciRIFF-style model...")
+            validate_item = validate_item_sciriff
+            translate_item = translate_item_sciriff
+        else:
+            raise ValueError(f"Unsupported model_type: {model_type}")
 
-		with open(input_file_path, 'r', encoding='utf-8') as file:
-			data_points = [json.loads(line) for line in file]
+        with open(input_file_path, 'r', encoding='utf-8') as file:
+            data_points = [json.loads(line) for line in file]
 
-		failed_items = []
-		failed_items_indices = []
+        failed_items = []
+        failed_items_indices = []
 
-		for index in tqdm(line_indices, desc="Processing lines", unit="item"):
-			item = data_points[index]
+        for index in tqdm(line_indices, desc="Processing lines", unit="item"):
+            item = data_points[index]
 
-			# Validate the item structure
-			if not validate_item(item):
-				print("Skipping item due to invalid structure.")
-				failed_items.append(item)
-				continue
+            # Validieren der Elementstruktur
+            if not validate_item(item):
+                print("Skipping item due to invalid structure.")
+                failed_items.append(item)
+                continue
 
-			# Translate the relevant fields in the item
-			translated_item = None
-			retry_count = 0
-			while translated_item is None and retry_count < 3:
-				print("going to translate the item...")
-				translated_item = translate_item(item, raw_file_path, translator, tokenizer, target_language)
-				retry_count += 1
-				if translated_item is None:
-					print(f"Translation failed for item. Retry attempt: {retry_count}")
-					time.sleep(1)
-			
-			if translated_item is not None:
-				translated_item['index'] = index
-				with open(output_file_path, 'a', encoding='utf-8') as file:
-					file.write(json.dumps(translated_item, ensure_ascii=False) + "\n")
-			else:
-				failed_items_indices.append(index)
-				failed_items.append(item)
-				print("Translation failed after multiple attempts. Skipping item.")
+            # Übersetzen der relevanten Felder im Element
+            translated_item = None
+            retry_count = 0
+            while translated_item is None and retry_count < 3:
+                print("going to translate the item...")
+                translated_item = translate_item(item, raw_file_path, translator, tokenizer, target_language)
+                retry_count += 1
+                if translated_item is None:
+                    print(f"Translation failed for item. Retry attempt: {retry_count}")
+                    time.sleep(1)
+            
+            if translated_item is not None:
+                translated_item['index'] = index
+                with open(output_file_path, 'a', encoding='utf-8') as file:
+                    file.write(json.dumps(translated_item, ensure_ascii=False) + "\n")
+            else:
+                failed_items_indices.append(index)
+                failed_items.append(item)
+                print("Translation failed after multiple attempts. Skipping item.")
 
-			# Validate the translated item structure
-			if not validate_item(translated_item):
-				print("Skipping translated item due to invalid structure.")
-				failed_items.append(item)
-				continue
-		
-		with open('failed_items.jsonl', 'w', encoding='utf-8') as file:
-			for item in failed_items:
-				file.write(json.dumps(item, ensure_ascii=False) + "\n")
+            # Validieren der übersetzten Elementstruktur
+            if not validate_item(translated_item):
+                print("Skipping translated item due to invalid structure.")
+                failed_items.append(item)
+                continue
+        
+        with open('failed_items.jsonl', 'w', encoding='utf-8') as file:
+            for item in failed_items:
+                file.write(json.dumps(item, ensure_ascii=False) + "\n")
 
-		failed_items_str = generate_failed_items_str(failed_items_indices)
-		with open('failed_items_index.txt', 'w', encoding='utf-8') as f:
-			f.write(failed_items_str)
-		
-		print("Translation completed successfully.")
+        failed_items_str = generate_failed_items_str(failed_items_indices)
+        with open('failed_items_index.txt', 'w', encoding='utf-8') as f:
+            f.write(failed_items_str)
+        
+        print("Translation completed successfully.")
 
-	except Exception as e:
-		print(f"An error occurred: {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
 
 def generate_failed_items_str(indices):
 	if not indices:
@@ -518,79 +574,89 @@ def translate_dataset(train_url, local_parquet_path, input_file_path, output_fil
 	except Exception as e:
 		print(f"Failed to upload {output_file_path} to Hugging Face: {e}")  
 
+# Integration der neuen Funktionen in die main-Funktion
 def main():
-	try:
-		print("Initializing...")
-		# Configuration and paths
-		tokenizer_name = "facebook/wmt21-dense-24-wide-en-x"
-		model_repo_name = "cstr/wmt21ct2_int8"  # Repository to download the model from
-		output_repo_name = "cstr/datasets_de_test"  # Repository to upload the output file to
-		token = os.getenv("HUGGINGFACE_TOKEN")
+    try:
+        print("Initializing...")
+        # Konfiguration und Pfade
+        tokenizer_name = "facebook/wmt21-dense-24-wide-en-x"
+        model_repo_name = "cstr/wmt21ct2_int8"  # Repository zum Herunterladen des Modells
+        output_repo_name = "cstr/datasets_de_test"  # Repository zum Hochladen der Ausgabedatei
+        token = os.getenv("HUGGINGFACE_TOKEN")
 
-	   # Download the model snapshot from Hugging Face
-		model_path = snapshot_download(repo_id=model_repo_name, token=token)
-		print(f"Model downloaded to: {model_path}")
+       # Herunterladen des Modell-Snapshots von Hugging Face
+        model_path = snapshot_download(repo_id=model_repo_name, token=token)
+        print(f"Model downloaded to: {model_path}")
 
-		# Load the CTranslate2 model
-		translator = ctranslate2.Translator(model_path, device="auto")
-		print("CTranslate2 model loaded successfully.")
+        # Laden des CTranslate2-Modells
+        translator = ctranslate2.Translator(model_path, device="auto")
+        print("CTranslate2 model loaded successfully.")
 
-		# Load the tokenizer
-		tokenizer = transformers.AutoTokenizer.from_pretrained(tokenizer_name)
-		tokenizer.src_lang = "en"
-		print("Tokenizer loaded successfully.")
+        # Laden des Tokenizers
+        tokenizer = transformers.AutoTokenizer.from_pretrained(tokenizer_name)
+        tokenizer.src_lang = "en"
+        print("Tokenizer loaded successfully.")
 
-		# Define task parameters
-		tasks = [
-			{
-				"url": "https://huggingface.co/datasets/alvarobartt/dpo-mix-7k-simplified/resolve/main/data/train-00000-of-00001.parquet?download=true",
-				"local_path": "train.parquet",
-				"input_file": "mix_en.jsonl",
-				"output_file": "mix_de.jsonl",
-				"raw_file": "mix_de_raw.jsonl",
-				"range_spec": "1-5",
-				"model_type": "mix"
-			},
-			{
-				"url": "https://huggingface.co/datasets/argilla/ultrafeedback-binarized-preferences-cleaned/resolve/main/data/train-00000-of-00001.parquet?download=true",
-				"local_path": "train.parquet",
-				"input_file": "ufb_en.jsonl",
-				"output_file": "ufb_de.jsonl",
-				"raw_file": "ufb_de_raw.jsonl",
-				"range_spec": "1-5",
-				"model_type": "ufb"
-			},
-			{
-				"url": "https://huggingface.co/datasets/mlabonne/orpo-dpo-mix-40k/resolve/main/data/train-00000-of-00001.parquet?download=true",
-				"local_path": "train.parquet",
-				"input_file": "ufb_cached_en.jsonl",
-				"output_file": "ufb_cached_de.jsonl",
-				"raw_file": "ufb_cached_de_raw.jsonl",
-				"range_spec": "1-5",
-				"model_type": "ufb_cached"
-			}
-			]
+        # Aufgaben definieren
+        tasks = [
+            {
+                "url": "https://huggingface.co/datasets/alvarobartt/dpo-mix-7k-simplified/resolve/main/data/train-00000-of-00001.parquet?download=true",
+                "local_path": "train.parquet",
+                "input_file": "mix_en.jsonl",
+                "output_file": "mix_de.jsonl",
+                "raw_file": "mix_de_raw.jsonl",
+                "range_spec": "1-5",
+                "model_type": "mix"
+            },
+            {
+                "url": "https://huggingface.co/datasets/argilla/ultrafeedback-binarized-preferences-cleaned/resolve/main/data/train-00000-of-00001.parquet?download=true",
+                "local_path": "train.parquet",
+                "input_file": "ufb_en.jsonl",
+                "output_file": "ufb_de.jsonl",
+                "raw_file": "ufb_de_raw.jsonl",
+                "range_spec": "1-5",
+                "model_type": "ufb"
+            },
+            {
+                "url": "https://huggingface.co/datasets/mlabonne/orpo-dpo-mix-40k/resolve/main/data/train-00000-of-00001.parquet?download=true",
+                "local_path": "train.parquet",
+                "input_file": "ufb_cached_en.jsonl",
+                "output_file": "ufb_cached_de.jsonl",
+                "raw_file": "ufb_cached_de_raw.jsonl",
+                "range_spec": "1-5",
+                "model_type": "ufb_cached"
+            },
+            {
+                "url": "https://huggingface.co/datasets/allenai/SciRIFF-train-mix/resolve/main/data/train-00000-of-00001.parquet?download=true",
+                "local_path": "train.parquet",
+                "input_file": "sciriff_en.jsonl",
+                "output_file": "sciriff_de.jsonl",
+                "raw_file": "sciriff_de_raw.jsonl",
+                "range_spec": "1-5",
+                "model_type": "sciriff"
+            }
+            ]
 
-		for task in tasks:
-			translate_dataset(
-				train_url=task["url"],
-				local_parquet_path=task["local_path"],
-				input_file_path=task["input_file"],
-				output_file_path=task["output_file"],
-				output_dir=".",
-				output_repo_name=output_repo_name,
-				raw_file_path=task["raw_file"],
-				token=token,
-				range_specification=task["range_spec"],
-				model_type=task["model_type"],
-				translator=translator,
-				tokenizer=tokenizer,
-				target_language="de"  # Hardcoded target language
-			)
+        for task in tasks:
+            translate_dataset(
+                train_url=task["url"],
+                local_parquet_path=task["local_path"],
+                input_file_path=task["input_file"],
+                output_file_path=task["output_file"],
+                output_dir=".",
+                output_repo_name=output_repo_name,
+                raw_file_path=task["raw_file"],
+                token=token,
+                range_specification=task["range_spec"],
+                model_type=task["model_type"],
+                translator=translator,
+                tokenizer=tokenizer,
+                target_language="de"  # Hardcoded target language
+            )
 
-	except Exception as e:
-		print(f"An error occurred in the main function: {e}")
-		raise
+    except Exception as e:
+        print(f"An error occurred in the main function: {e}")
+        raise
 
 if __name__ == '__main__':
-	main()
+    main()
